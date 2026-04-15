@@ -192,7 +192,7 @@ bool g_MiddleMouseButtonPressed = false; // Análogo para botão do meio do mous
 // renderização.
 float g_CameraTheta = 0.0f; // Ângulo no plano ZX em relação ao eixo Z
 float g_CameraPhi = 0.3f;   // Ângulo em relação ao eixo Y
-float g_CameraDistance = 3.5f; // Distância da câmera para a origem
+float g_CameraDistance = 17.0f; // Distância da câmera para a origem
 
 // Variáveis que controlam rotação do antebraço
 float g_ForearmAngleZ = 0.0f;
@@ -365,7 +365,7 @@ int main(int argc, char* argv[])
         // Note que, no sistema de coordenadas da câmera, os planos near e far
         // estão no sentido negativo! Veja slides 176-204 do documento Aula_09_Projecoes.pdf.
         float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane  = -10.0f; // Posição do "far plane"
+        float farplane  = -45.0f; // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -396,24 +396,54 @@ int main(int argc, char* argv[])
         glUniformMatrix4fv(g_view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(g_projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
+        float current_time = (float)glfwGetTime();
+        float egg_orbit_angle = 0.8f * current_time;
+        const float egg_orbit_radius = 1.5f;
+        const float egg_height = 0.35f;
+        const glm::mat4 egg_shape = Matrix_Scale(0.325f, 0.475f, 0.325f);
+        const int bunny_count = 16;
+        const float bunny_circle_radius = 8.0f;
+        const float bunny_angular_speed = 0.2f;
+        const float bunny_bob_amplitude = 2.0f;
+        const float bunny_bob_frequency = 4.3f;
+        const float bunny_spin_speed = 1.3f;
+
         #define SPHERE 0
         #define BUNNY  1
         #define PLANE  2
 
-        // Desenhamos o modelo da esfera
-        model = Matrix_Translate(-1.0f,0.0f,0.0f);
-        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, SPHERE);
-        DrawVirtualObject("the_sphere");
+        for (int bunny_index = 0; bunny_index < bunny_count; ++bunny_index)
+        {
+            float base_angle = (2.0f * 3.141592f * bunny_index) / (float)bunny_count;
+            float bunny_angle = base_angle + bunny_angular_speed * current_time;
 
-        // Desenhamos o modelo do coelho
-        model = Matrix_Translate(1.0f,0.0f,0.0f);
-        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
-        glUniform1i(g_object_id_uniform, BUNNY);
-        DrawVirtualObject("the_bunny");
+            float bunny_x = bunny_circle_radius * cos(bunny_angle);
+            float bunny_y = 2.0f + bunny_bob_amplitude * sin(bunny_bob_frequency * current_time + 1.5f * base_angle);
+            float bunny_z = bunny_circle_radius * sin(bunny_angle);
+            glm::mat4 bunny_center = Matrix_Translate(bunny_x, bunny_y, bunny_z);
+
+            // Cada coelho possui dois ovos em lados opostos orbitando no eixo X.
+            model = bunny_center * Matrix_Rotate_X(egg_orbit_angle) * Matrix_Translate(0.0f, egg_orbit_radius, egg_height) * egg_shape;
+            glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+            glUniform1i(g_object_id_uniform, SPHERE);
+            DrawVirtualObject("the_sphere");
+
+            model = bunny_center * Matrix_Rotate_X(egg_orbit_angle) * Matrix_Translate(0.0f, -egg_orbit_radius, egg_height) * egg_shape;
+            glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+            glUniform1i(g_object_id_uniform, SPHERE);
+            DrawVirtualObject("the_sphere");
+
+            if (bunny_index % 4 == 0)
+                model = bunny_center * Matrix_Rotate_Z(-bunny_spin_speed * current_time);
+            else
+                model = bunny_center;
+            glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+            glUniform1i(g_object_id_uniform, BUNNY);
+            DrawVirtualObject("the_bunny");
+        }
 
         // Desenhamos o plano do chão
-        model = Matrix_Translate(0.0f,-1.0f,0.0f) * Matrix_Scale(4.0f,1.0f,4.0f);
+        model = Matrix_Translate(0.0f,-1.0f,0.0f) * Matrix_Scale(20.0f,1.0f,20.0f);
         glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, PLANE);
         DrawVirtualObject("the_plane");
